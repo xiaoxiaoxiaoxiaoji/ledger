@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>每日记账</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232f6fed'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle'%3E%F0%9F%92%B0%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#2f6fed">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>📒 每日记账</h1>
+  <div class="status">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">本地模式</span>
+    <button class="btn small ghost" id="btnAuth">登录同步</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- 左列：快速记账 -->
+  <section class="card" id="cardForm">
+    <h2 id="formTitle">记一笔</h2>
+    <div class="type-switch">
+      <button type="button" data-type="expense" class="expense active">支出</button>
+      <button type="button" data-type="income" class="income">收入</button>
+    </div>
+
+    <input type="text" inputmode="decimal" class="amount-input expense" id="amountInput" placeholder="0.00" autocomplete="off">
+    <div class="quick-nums" id="quickNums"></div>
+
+    <div class="field">
+      <label>分类</label>
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+
+    <div class="field">
+      <label>日期时间</label>
+      <input type="datetime-local" id="txnAt">
+    </div>
+
+    <div class="field">
+      <label>备注（可选）</label>
+      <input type="text" id="noteInput" placeholder="例如：午餐、打车…" maxlength="50">
+    </div>
+
+    <button class="btn" id="btnSave">保存</button>
+    <button class="btn ghost hidden" id="btnCancelEdit" style="margin-top:8px;">取消编辑</button>
+  </section>
+
+  <!-- 右列 -->
+  <div class="col-right">
+
+    <!-- 月度汇总 -->
+    <section class="card full">
+      <h2>
+        月度概览
+        <span class="month-nav">
+          <button id="prevMonth">‹</button>
+          <span id="monthLabel"></span>
+          <button id="nextMonth">›</button>
+        </span>
+      </h2>
+      <div class="stat-cards">
+        <div class="stat-card income"><div class="lbl">本月收入</div><div class="val" id="statIncome">¥0.00</div></div>
+        <div class="stat-card expense"><div class="lbl">本月支出</div><div class="val" id="statExpense">¥0.00</div></div>
+        <div class="stat-card"><div class="lbl">结余</div><div class="val" id="statBalance">¥0.00</div></div>
+      </div>
+    </section>
+
+    <!-- 饼图 -->
+    <section class="card">
+      <h2>支出分类占比</h2>
+      <div class="chart-box"><canvas id="pieCanvas" width="300" height="220"></canvas></div>
+      <div class="legend" id="pieLegend"></div>
+    </section>
+
+    <!-- 柱状图 -->
+    <section class="card">
+      <h2>近6个月收支</h2>
+      <div class="chart-box"><canvas id="barCanvas" width="300" height="220"></canvas></div>
+      <div class="legend">
+        <span><i style="background:var(--income)"></i>收入</span>
+        <span><i style="background:var(--expense)"></i>支出</span>
+      </div>
+    </section>
+
+    <!-- 预算 -->
+    <section class="card full">
+      <h2>
+        预算提醒
+        <button class="btn small ghost" id="btnEditBudget">设置预算</button>
+      </h2>
+      <div id="budgetList"></div>
+    </section>
+
+    <!-- 流水 -->
+    <section class="card full">
+      <h2>
+        流水明细
+        <button class="btn small ghost" id="btnExport">导出 CSV</button>
+      </h2>
+      <div id="txnList"></div>
+    </section>
+
+    <!-- 分类管理 -->
+    <section class="card full">
+      <h2>分类管理</h2>
+      <div class="field">
+        <label>新增分类（支出 / 收入 共用，输入名称即可）</label>
+        <div style="display:flex; gap:8px;">
+          <select id="newCatType" style="width:90px;">
+            <option value="expense">支出</option>
+            <option value="income">收入</option>
+          </select>
+          <input type="text" id="newCatName" placeholder="分类名称，如：咖啡">
+          <button class="btn small" id="btnAddCat">添加</button>
+        </div>
+      </div>
+      <div id="catManageList"></div>
+    </section>
+
+  </div>
+</main>
+
+<!-- 登录弹窗 -->
+<div class="modal-mask" id="authModal">
+  <div class="modal">
+    <h3 id="authTitle">登录以开启云端同步</h3>
+    <div class="err" id="authErr"></div>
+    <div class="field"><label>邮箱</label><input type="email" id="authEmail" placeholder="you@example.com"></div>
+    <div class="field"><label>密码</label><input type="password" id="authPw" placeholder="至少 6 位"></div>
+    <button class="btn" id="btnAuthSubmit">登录</button>
+    <div class="switch-line">还没有账号？<a id="authSwitch">点此注册</a></div>
+    <div class="switch-line"><a id="authClose">暂不登录，先用本地模式</a></div>
+  </div>
+</div>
+
+<!-- 预算弹窗 -->
+<div class="modal-mask" id="budgetModal">
+  <div class="modal">
+    <h3>设置 <span id="budgetMonthLabel"></span> 预算</h3>
+    <div class="field"><label>每月总预算（元）</label><input type="number" id="budgetTotal" step="0.01" min="0"></div>
+    <div id="budgetItems"></div>
+    <button class="btn" id="btnBudgetSave" style="margin-top:10px;">保存</button>
+    <button class="btn ghost" id="btnBudgetCancel" style="margin-top:8px;">取消</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
